@@ -1,4 +1,9 @@
+import multiprocessing
 import simulus
+
+# needed because pickling multiple multiprocessing.Process is not supported:
+# https://github.com/python/cpython/issues/91090
+multiprocessing.set_start_method("fork")
 
 from functools import partial
 print = partial(print, flush=True)

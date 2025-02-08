@@ -19,4 +19,4 @@ mb1.send('ping') # send initial message to start ping-ponging
 g = simulus.sync([sim1, sim2], enable_smp=True)
 
 if __name__ == "__main__":
-    g.run(10, show_runtime_report=False)
+    g.run(10, show_runtime_report=True)

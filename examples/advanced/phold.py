@@ -1,5 +1,11 @@
 import simulus, random, argparse, textwrap
 random.seed(12345)
+import multiprocessing
+
+# needed because pickling multiple multiprocessing.Process is not supported:
+# https://github.com/python/cpython/issues/91090
+multiprocessing.set_start_method("fork")
+
 
 # the following are utility functions to determine the starting and
 # ending index of an array that belongs to process id, if the array

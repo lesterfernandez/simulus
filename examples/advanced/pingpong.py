@@ -2,9 +2,6 @@ import simulus
 
 import pickle
 
-from simulus.mailbox import Mailbox
-from simulus.simulus import _Simulus
-
 def is_picklable(obj):
     """Checks if an object can be pickled."""
     try:

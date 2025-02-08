@@ -1,4 +1,9 @@
+import multiprocessing
 import simulus
+
+# needed because pickling multiple multiprocessing.Process is not supported:
+# https://github.com/python/cpython/issues/91090
+multiprocessing.set_start_method("fork")
 
 from functools import partial
 print = partial(print, flush=True)
@@ -19,5 +24,7 @@ for i in range(nnodes):
 
 g = simulus.sync(sims, enable_smp=True)
 g.send(sims[0], 'mb0', 'hello') # send initial message to start circulation
-g.run(10)
-g.run(5, show_runtime_report=True)
+
+if __name__ == "__main__":
+    g.run(10)
+    g.run(5, show_runtime_report=True)
