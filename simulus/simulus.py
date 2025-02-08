@@ -16,14 +16,13 @@ class _Simulus(object):
     instance = None       
     def __new__(cls):
         if not _Simulus.instance:
-            _Simulus.instance = _Simulus.__OneInstance()
+            _Simulus.instance = _Simulus.__OneInstance__()
         return _Simulus.instance
     def __getattr__(self, name):
         return getattr(self.instance, name)
     def __setattr__(self, name):
         return setattr(self.instance, name)
-    
-    class __OneInstance:
+    class __OneInstance__:
         """The first simulator creates one and only one instance of this class
         for the entire simulation run. That is, this class is expected
         to be a singleton. Note that there's one and one instance for

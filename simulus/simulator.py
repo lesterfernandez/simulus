@@ -4,6 +4,7 @@
 # Last Update: Time-stamp: <2019-09-07 09:16:54 liux>
 ###############################################################
 
+import os
 import random, uuid, time
 from collections import deque
 
@@ -1079,11 +1080,15 @@ class simulator:
         events with timestamps less than 'until'), and if
         'updating_until' is true, update the simulation clock to
         'until' after processing all the events."""
+
+        log.debug(f"[{os.getpid()}] {self.name} has {len(self._eventlist)} events")
         
         # this is the main event loop of the simulator!
         while len(self._eventlist) > 0:
             t = self._eventlist.get_min()
-            if t >= upper: break
+            if t >= upper:
+                log.debug(f"[{os.getpid()}] {self.name} had event at time={t}>={upper}. breaking loop.")
+                break
             self._process_one_event()
 
         # after all the events, make sure we don't wind back the clock
@@ -1145,8 +1150,10 @@ class simulator:
                 #          (self._simulus.comm_rank, self.name[-4:], e.time, self.now))
                 self._runtime["scheduled_events"] += 1
                 self._eventlist.insert(e)
+            log.debug(f"[{os.getpid()}] executing direct event at time {e} {e.func} {e.args} {e.kwargs}")
             e.func(*e.args, **e.kwargs)
         elif isinstance(e, _ProcessEvent):
+            log.debug(f"[{os.getpid()}] executing process event at time {self.now} {e.proc.__dict__}")
             e.proc.activate()
         else:
             errmsg = "unknown event type: " + str(e)
@@ -1181,37 +1188,6 @@ class simulator:
         or None if the simulator does not belong to any group."""
         return self._insync
     
-    # def fast_rng(self):
-    #     """Return a fast pseudo-random number generator attached to this
-    #     simulator. It's a Lehmer random number generator, which has a
-    #     very short period. Use with caution!"""
-    #     class _FastRNG(random.Random):
-    #         M = 2147483647
-    #         A = 48271
-    #         A256 = 22925
-    #         Q = int(M/A)
-    #         R = M%A
-    #         def __init__(self, initial_seed):
-    #             self._seed = initial_seed
-    #         def random(self):
-    #             t = _FastRNG.A*(self._seed%_FastRNG.Q)-_FastRNG.R*int(self._seed/_FastRNG.Q)
-    #             if t > 0: self._seed = t
-    #             else: self._seed = t+_FastRNG.M
-    #             return float(self._seed)/_FastRNG.M
-    #         def seed(self, a):
-    #             t = a%_FastRNG.M
-    #             if t > 0: self._seed = t
-    #             else: self._seed = t+_FastRNG.M
-    #         def getstate(self):
-    #             return self._seed
-    #         def setstate(self, state):
-    #             self._seed(state)
-    #         #def getrandbits(self, k): pass
-    #     if self._fast_rng is None:
-    #         u = uuid.uuid3(self._simulus.namespace, self.name)
-    #         self._fast_rng = _FastRNG(int(u.int/2**32))
-    #     return self._fast_rng
-
     def show_calendar(self):
         """Print the list of all future events currently on the event
         list. This is an expensive operation and should be used

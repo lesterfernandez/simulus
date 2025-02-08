@@ -6,6 +6,9 @@
 
 __all__ = ["Trappable"]
 
+from simulus.simulus import _Simulus
+
+
 class Trappable(object):
     """The base class for all trappables. 
 
@@ -18,6 +21,17 @@ class Trappable(object):
     def __init__(self, sim):
         self._sim = sim
         self.retval = None
+
+    @property
+    def _sim(self):
+        return _Simulus().get_simulator(self._sim_name)
+
+    @_sim.setter
+    def _sim(self, sim):
+        if isinstance(sim, str):
+            self._sim_name = sim
+        else:
+            self._sim_name = sim.name
 
     def _try_wait(self): pass
     def _commit_wait(self): pass

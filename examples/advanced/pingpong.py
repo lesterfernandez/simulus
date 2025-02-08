@@ -1,5 +1,19 @@
 import simulus
 
+import pickle
+
+from simulus.mailbox import Mailbox
+from simulus.simulus import _Simulus
+
+def is_picklable(obj):
+    """Checks if an object can be pickled."""
+    try:
+        pickle.dumps(obj)  # Try to pickle the object
+        return True
+    except (pickle.PicklingError, AttributeError, TypeError):  # Catch common pickling errors
+        return False
+
+
 def p(sim, mbox, mbname):
     while True:
         msg = mbox.recv(isall=False)
@@ -7,14 +21,22 @@ def p(sim, mbox, mbname):
         sim.sync().send(sim, mbname, 'pong' if msg=='ping' else 'ping')
         
 sim1 = simulus.simulator('sim1')
+# ins = _Simulus()
+# print(is_picklable(sim1), sim1._mailboxes)
 mb1 = sim1.mailbox('mb1', 1)
+print(is_picklable(mb1._parts[0]), mb1._parts[0].__dict__)
+# print(is_picklable(sim1), sim1._mailboxes)
 sim1.process(p, sim1, mb1, 'mb2')
+
+
 
 sim2 = simulus.simulator('sim2')
 mb2 = sim2.mailbox('mb2', 1)
 sim2.process(p, sim2, mb2, 'mb1')
 
 mb1.send('ping') # send initial message to start ping-ponging
+
+# print(sim1.mailbox("mb3"))
 
 g = simulus.sync([sim1, sim2])
 g.run(10)
