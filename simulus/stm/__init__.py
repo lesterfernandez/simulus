@@ -2,7 +2,6 @@ from collections.abc import Callable
 import threading
 from mpi4py import MPI
 from typing import Any, Literal
-import numpy as np
 
 from .log import logger
 from .data import _Timed_Data
@@ -68,7 +67,7 @@ class _STM:
         if listening_mode == "thread":
             self._listening_thread = threading.Thread(
                 target=self._receive_message_loop,
-                args=(STM_Tag.STM_DATA, self.handle_incoming),
+                args=(self.process_message,),
             )
             self._listening_thread.start()
         elif listening_mode == "manual":
@@ -81,24 +80,28 @@ class _STM:
         for target in range(size):
             comm.send(obj=shutdown_msg, dest=target, tag=STM_Tag.STM_DATA)
 
-    def _receive_message_loop(self, tag: int, process_msg: Callable[[Any], None]):
+    def _receive_message_loop(self, handler: Callable[[Any], None]):
         while True:
-            req = comm.irecv(tag=tag)
-            msg = req.wait()
-            if isinstance(msg, _Message_STM_Shutdown):
-                self._rank_shutdown[msg.source_rank] = True
-                logger.debug(
-                    f"({rank}) received shutdown from {msg.source_rank}, {self._rank_shutdown}"
-                )
-            if self._rank_shutdown[rank] and all(self._rank_shutdown):
-                logger.info(f"({rank}) shutting down")
+            msg = self.receive_message().wait()
+            if self.check_shutdown(msg):
                 break
-            process_msg(msg)
+            handler(msg)
 
-    def listen_manual(self):
+    def receive_message(self):
         return comm.irecv(tag=STM_Tag.STM_DATA)
 
-    def handle_incoming(self, msg):
+    def check_shutdown(self, msg: Any):
+        if isinstance(msg, _Message_STM_Shutdown):
+            self._rank_shutdown[msg.source_rank] = True
+            logger.debug(
+                f"({rank}) received shutdown from {msg.source_rank}, {self._rank_shutdown}"
+            )
+        if self._rank_shutdown[rank] and all(self._rank_shutdown):
+            logger.info(f"({rank}) shutting down")
+            return True
+        return False
+
+    def process_message(self, msg):
         logger.info(f"({rank}) received {msg}")
         if isinstance(msg, _Message_Channel_Connection):
             channel = self._local_channels[msg.channel_name]
