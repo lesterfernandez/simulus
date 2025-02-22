@@ -134,7 +134,7 @@ class _STM:
         return reader
 
     def attach_writer(self, channel_name: str):
-        return _Writer(channel_name)
+        return _Writer(self, channel_name)
 
     def _put(self, ts: int, item: Any, channel_name: str):
         if channel_name in self._local_channels:
@@ -183,8 +183,9 @@ class _Reader:
 
 
 class _Writer:
-    def __init__(self, channel_name: str):
+    def __init__(self, stm: _STM, channel_name: str):
+        self.stm = stm
         self.channel_name = channel_name
 
-    def put(self, ts: int, item: Any, stm: _STM):
-        stm._put(ts, item, self.channel_name)
+    def put(self, ts: int, item: Any):
+        self.stm._put(ts, item, self.channel_name)
