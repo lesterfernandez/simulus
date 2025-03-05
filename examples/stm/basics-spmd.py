@@ -13,11 +13,9 @@ if rank == 0:
 
 with s.build() as stm:
     if rank == 0:
-        # time.sleep(0.001) # delay
         writer = stm.attach_writer("ch1")
         writer.put(1, "HELLO, THIS IS DATA")
     else:
-        time.sleep(0.3) # delay
         reader = stm.attach_reader("ch1")
         print(f"({rank}) {reader.get(1)}")
         print(f"({rank}) {reader.get(2)}")
