@@ -10,7 +10,7 @@ class STM_Tag:
 
 
 @dataclass
-class _Message_STM_Init_Data:
+class _Message_STM_Channels_Init:
     channels: list[str]
     source_rank: int
 
@@ -18,12 +18,6 @@ class _Message_STM_Init_Data:
 @dataclass
 class _Message_STM_Shutdown:
     source_rank: int
-
-
-@dataclass
-class _Message_Channel_Connection:
-    source_rank: int
-    channel_name: str
 
 
 @dataclass
@@ -39,8 +33,3 @@ class _Message_Reader_Data:
     ts: int
     item: Any
     channel_name: str
-
-
-@dataclass
-class _Message_Connection_Init_Data:
-    channel_data: _Timed_Data

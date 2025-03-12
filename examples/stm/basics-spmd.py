@@ -1,5 +1,6 @@
 # mpiexec -np 3 python examples/stm/basics-spmd.py
 
+from time import sleep
 from simulus.stm import STMBuilder
 from mpi4py import MPI
 
@@ -9,12 +10,16 @@ rank = comm.Get_rank()
 b = STMBuilder()
 if rank == 0:
     b.create_channels(["ch1"])
+    # b.create_writer("ch1", "ch1_writer")
+else:
+    b.create_reader("ch1", "ch1_reader")
 
 with b.build() as stm:
     if rank == 0:
         writer = stm.attach_writer("ch1")
         writer.put(1, "HELLO, THIS IS DATA")
     else:
-        reader = stm.attach_reader("ch1")
+        reader = stm.readers["ch1_reader"]
+        sleep(0.1)
         print(f"({rank}) {reader.get(1)}")
         print(f"({rank}) {reader.get(2)}")
