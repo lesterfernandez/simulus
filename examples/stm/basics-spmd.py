@@ -1,17 +1,16 @@
 # mpiexec -np 3 python examples/stm/basics-spmd.py
 
-import time
 from simulus.stm import STMBuilder
 from mpi4py import MPI
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 
-s = STMBuilder()
+b = STMBuilder()
 if rank == 0:
-    s.create_channels(["ch1"])
+    b.create_channels(["ch1"])
 
-with s.build() as stm:
+with b.build() as stm:
     if rank == 0:
         writer = stm.attach_writer("ch1")
         writer.put(1, "HELLO, THIS IS DATA")
