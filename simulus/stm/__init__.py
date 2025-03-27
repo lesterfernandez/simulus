@@ -3,6 +3,7 @@ import threading
 from mpi4py import MPI
 from typing import Any, Literal
 
+
 from .log import logger
 from .data import _Timed_Data
 from .messaging import (
@@ -12,6 +13,8 @@ from .messaging import (
     _Message_STM_Shutdown,
     STM_Tag,
 )
+
+from simulus.utils import _PQDict_
 
 
 COMM = MPI.COMM_WORLD
@@ -37,7 +40,7 @@ class STMBuilder:
         )
         if channel_is_local:
             channel_rank = self._obj._channel_ranks[channel_name]
-            reader = _Reader(channel_name, channel_rank)
+            reader = _Reader(reader_name, channel_name, channel_rank)
             channel = self._obj._local_channels[channel_name]
             reader.data = channel.channel_data
             channel.locals_attached.add(reader)
@@ -71,27 +74,39 @@ class STMBuilder:
                 self._obj._channel_ranks[channel_name] = msg.source_rank
 
         # initialize readers that are attached to remote channels
-        connections = [[] for _ in range(SIZE)]
+        # each rank has a list of connections, which are represented as tuples
+        rank_connections: list[list[tuple[str, str]]] = [[] for _ in range(SIZE)]
         for channel_name, reader_names in self._channel_reader_names.items():
+            channel_rank = self._obj._channel_ranks[channel_name]
             # create reader objects
             for reader_name in reader_names:
-                reader = _Reader(channel_name, self._obj._channel_ranks[channel_name])
+                reader = _Reader(
+                    reader_name, channel_name, self._obj._channel_ranks[channel_name]
+                )
                 self._obj.readers[reader_name] = reader
                 self._obj._channel_readers.setdefault(channel_name, [])
                 self._obj._channel_readers[channel_name].append(reader)
-            # note the ranks that this rank has attachments to
-            channel_rank = self._obj._channel_ranks[channel_name]
-            connections[channel_rank].append(channel_name)
+                # note the ranks that this rank has attachments to
+                rank_connections[channel_rank].append((channel_name, reader_name))
 
         # distribute channel attachment information
-        connection_msgs = COMM.alltoall(connections)
-        logger.debug(f"({RANK}) connection msgs = {connection_msgs}")
-        for source_rank, channels in enumerate(connection_msgs):
-            if channels == []:
+        rank_connection_msgs = COMM.alltoall(rank_connections)
+        logger.debug(f"({RANK}) rank connection msgs = {rank_connection_msgs}")
+        for source_rank, connections in enumerate(rank_connection_msgs):
+            if connections == []:
                 continue
-            for channel_name in channels:
+            for channel_name, reader_name in connections:
                 channel = self._obj._local_channels[channel_name]
                 channel.ranks_attached.add(source_rank)
+                channel.reader_keeptime[reader_name] = 0
+
+        logger.info(
+            f"({RANK}) finished build with channel keeptimes = {
+                [(key, channel.reader_keeptime[key]) 
+                 for channel in self._obj._local_channels.values() 
+                 for key in channel.reader_keeptime]
+            }"
+        )
 
         obj = self._obj
         self._obj = None
@@ -180,6 +195,7 @@ class _Channel:
         self.name = name
         self.channel_data = _Timed_Data()
         self.ranks_attached: set[int] = set()
+        self.reader_keeptime = _PQDict_()
         self.locals_attached: set[_Reader] = set()
 
     def publish_data(self, ts: int, item: Any):
@@ -196,7 +212,8 @@ class _Channel:
 
 
 class _Reader:
-    def __init__(self, channel_name: str, channel_rank: int):
+    def __init__(self, name: str, channel_name: str, channel_rank: int):
+        self.name = name
         self.channel_name = channel_name
         self.channel_rank = channel_rank
         self.data = _Timed_Data()
