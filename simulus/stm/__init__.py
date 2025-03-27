@@ -31,15 +31,16 @@ class STMBuilder:
         return self
 
     def create_reader(self, channel_name: str, reader_name: str):
-        if (
+        channel_is_local = (
             channel_name in self._obj._local_channels
             and channel_name in self._obj._channel_ranks
-        ):
+        )
+        if channel_is_local:
             channel_rank = self._obj._channel_ranks[channel_name]
             reader = _Reader(channel_name, channel_rank)
             channel = self._obj._local_channels[channel_name]
-            channel.locals_attached.add(reader)
             reader.data = channel.channel_data
+            channel.locals_attached.add(reader)
             self._obj.readers[reader_name] = reader
         else:
             self._channel_reader_names.setdefault(channel_name, [])
@@ -70,19 +71,19 @@ class STMBuilder:
                 self._obj._channel_ranks[channel_name] = msg.source_rank
 
         # initialize readers that are attached to remote channels
+        connections = [[] for _ in range(SIZE)]
         for channel_name, reader_names in self._channel_reader_names.items():
+            # create reader objects
             for reader_name in reader_names:
                 reader = _Reader(channel_name, self._obj._channel_ranks[channel_name])
                 self._obj.readers[reader_name] = reader
                 self._obj._channel_readers.setdefault(channel_name, [])
                 self._obj._channel_readers[channel_name].append(reader)
+            # note the ranks that this rank has attachments to
+            channel_rank = self._obj._channel_ranks[channel_name]
+            connections[channel_rank].append(channel_name)
 
         # distribute channel attachment information
-        connections = [[] for _ in range(SIZE)]
-        for channel_name, rank in self._obj._channel_ranks.items():
-            if rank == RANK:
-                continue
-            connections[rank].append(channel_name)
         connection_msgs = COMM.alltoall(connections)
         logger.debug(f"({RANK}) connection msgs = {connection_msgs}")
         for source_rank, channels in enumerate(connection_msgs):
