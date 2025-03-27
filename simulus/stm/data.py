@@ -3,10 +3,13 @@ from typing import Any
 
 class _Timed_Data:
     def __init__(self):
-        self.data = {}
+        self._data = {}
 
     def __getitem__(self, ts: int):
-        return self.data.get(ts, None)
+        return self._data.get(ts, None)
 
     def __setitem__(self, ts: int, item: Any):
-        self.data[ts] = item
+        self._data[ts] = item
+
+    def __delitem__(self, ts: int):
+        self._data.pop(ts, None)

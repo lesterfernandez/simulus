@@ -8,6 +8,7 @@ from .log import logger
 from .data import _Timed_Data
 from .messaging import (
     _Message_Channel_Put,
+    _Message_Reader_Consume,
     _Message_Reader_Data,
     _Message_STM_Channels_Init,
     _Message_STM_Shutdown,
@@ -66,7 +67,6 @@ class STMBuilder:
         channel_msgs = _Message_STM_Channels_Init(
             channels=list(self._obj._local_channels.keys()), source_rank=RANK
         )
-        logger.debug(f"({RANK}) gathering ready msgs")
         rank_ready_messages = COMM.allgather(channel_msgs)
         logger.debug(f"({RANK}) ready msgs = {rank_ready_messages}")
         for msg in rank_ready_messages:
@@ -172,8 +172,11 @@ class _STM:
         if isinstance(msg, _Message_Channel_Put):
             self._put(msg.ts, msg.item, msg.channel_name)
         elif isinstance(msg, _Message_Reader_Data):
-            for reader in self._channel_readers[msg.channel_name]:
+            for reader in self._channel_readers.get(msg.channel_name, []):
                 reader.data[msg.ts] = msg.item
+        elif isinstance(msg, _Message_Reader_Consume):
+            channel = self._local_channels[msg.channel_name]
+            channel.handle_consume_until(msg.reader_name, msg.until)
 
     def attach_writer(self, channel_name: str):
         return _Writer(self, channel_name)
@@ -207,8 +210,25 @@ class _Channel:
         for rank_attached in self.ranks_attached:
             req = COMM.isend(obj=msg, dest=rank_attached, tag=STM_Tag.STM_DATA)
             reqs.append(req)
-        logger.debug(f"({RANK}) publishing item={item} ts={ts} reqs={reqs}")
+        logger.debug(f"({RANK}) publishing item={item} ts={ts} to {len(reqs)} ranks")
         MPI.Request.waitall(reqs)
+
+    def keeptime(self) -> int:
+        _, ts = self.reader_keeptime.peek()
+        return ts
+
+    def set_keeptime(self, reader_name: str, time: int):
+        self.reader_keeptime[reader_name] = time
+
+    def handle_consume_until(self, reader_name: str, ts: int):
+        prev_keeptime = self.keeptime()
+        self.set_keeptime(reader_name, ts + 1)
+        self.reader_keeptime[reader_name] = ts + 1
+        keeptime = self.keeptime()
+        logger.info(f"({RANK}) {self.name} consume until {ts}, keeptime={keeptime}")
+        for ts in range(prev_keeptime, keeptime):
+            logger.debug(f"({RANK}) {self.name} deleting item at {ts}")
+            del self.channel_data[ts]
 
 
 class _Reader:
@@ -217,9 +237,20 @@ class _Reader:
         self.channel_name = channel_name
         self.channel_rank = channel_rank
         self.data = _Timed_Data()
+        self.keeptime = 0
 
     def get(self, ts: int):
+        if ts < self.keeptime:
+            return None
         return self.data[ts]
+
+    def consume_until(self, ts: int):
+        if ts >= self.keeptime:
+            for ts in range(self.keeptime, ts + 1):
+                del self.data[ts]
+            msg = _Message_Reader_Consume(ts, self.name, self.channel_name)
+            COMM.isend(obj=msg, dest=self.channel_rank, tag=STM_Tag.STM_DATA)
+        self.keeptime = min(self.keeptime, ts + 1)
 
 
 class _Writer:

@@ -6,7 +6,6 @@ from .data import _Timed_Data
 
 class STM_Tag:
     STM_DATA = 1
-    CONNECTION_INIT_DATA = 2
 
 
 @dataclass
@@ -32,4 +31,11 @@ class _Message_Channel_Put:
 class _Message_Reader_Data:
     ts: int
     item: Any
+    channel_name: str
+
+
+@dataclass
+class _Message_Reader_Consume:
+    until: int
+    reader_name: str
     channel_name: str

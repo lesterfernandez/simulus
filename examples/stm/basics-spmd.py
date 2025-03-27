@@ -11,14 +11,14 @@ b = STMBuilder()
 if rank == 0:
     b.create_channels(["ch1"])
 else:
-    b.create_reader("ch1", "ch1_reader")
+    b.create_reader("ch1", f"ch1_reader_{rank}")
 
 with b.build() as stm:
     if rank == 0:
         writer = stm.attach_writer("ch1")
         writer.put(1, "HELLO, THIS IS DATA")
     else:
-        reader = stm.readers["ch1_reader"]
+        reader = stm.readers[f"ch1_reader_{rank}"]
         sleep(0.1)
         print(f"({rank}) {reader.get(1)}")
         print(f"({rank}) {reader.get(2)}")
