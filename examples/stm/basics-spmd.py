@@ -18,7 +18,7 @@ with b.build() as stm:
         writer = stm.attach_writer("ch1")
         writer.put(1, "HELLO, THIS IS DATA")
     else:
-        reader = stm.readers[f"ch1_reader_{rank}"]
+        reader = stm._local_readers[f"ch1_reader_{rank}"]
         sleep(0.1)
         print(f"({rank}) {reader.get(1)}")
         print(f"({rank}) {reader.get(2)}")

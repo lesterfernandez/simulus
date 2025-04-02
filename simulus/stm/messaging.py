@@ -39,3 +39,16 @@ class _Message_Reader_Consume:
     until: int
     reader_name: str
     channel_name: str
+
+
+@dataclass
+class _Message_Writer_Advance:
+    until: int
+    writer_name: str
+    channel_name: str
+
+
+# @dataclass
+# class _Message_Reader_Advance_Notification:
+#     until: int
+#     channel_name: str
