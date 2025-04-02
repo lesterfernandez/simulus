@@ -27,13 +27,14 @@ with b.build() as stm:
     elif rank == 1:
         sleep(0.1)
         reader = stm.get_reader(f"ch1_reader_{rank}")
+        print(f"({rank}) {reader.data._data}")
         print(f"({rank}) get(2)={reader.get(2)}")  # null and not possible
         print(f"({rank}) get(4)={reader.get(4)}")  # null and still possible
         print(f"({rank}) consume_until(4)")
         reader.consume_until(4)
+        print(f"({rank}) {reader.data._data}")
         print(f"({rank}) get(4)={reader.get(4)}")  # null and not possible
         print(f"({rank}) get(7)={reader.get(7)}")  # null and still possible
-        print(f"({rank}) {reader.data._data}")
     elif rank == 2:
         sleep(0.5)
         reader = stm.get_reader(f"ch1_reader_{rank}")

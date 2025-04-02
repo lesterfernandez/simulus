@@ -10,9 +10,9 @@ rank = comm.Get_rank()
 b = STMBuilder()
 if rank == 0:
     b.create_channels(["ch1"])
+    b.create_writer("ch1", f"ch1_writer_{rank}")
 else:
     b.create_reader("ch1", f"ch1_reader_{rank}")
-    b.create_writer("ch1", f"ch1_writer_{rank}")
 
 with b.build() as stm:
     if rank == 0:
