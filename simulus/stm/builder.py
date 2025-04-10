@@ -24,20 +24,20 @@ class STMBuilder:
     def create_channels(self, channels: list[str]):
         for channel in channels:
             self._obj._local_channels[channel] = _Channel(channel)
-            self._obj._channel_ranks[channel] = RANK
+            self._obj._channel_rank[channel] = RANK
         return self
 
     def create_reader(self, channel_name: str, reader_name: str):
         channel_is_local = (
             channel_name in self._obj._local_channels
-            and channel_name in self._obj._channel_ranks
+            and channel_name in self._obj._channel_rank
         )
         if channel_is_local:
             reader = _Reader(reader_name, channel_name, RANK)
             channel = self._obj._local_channels[channel_name]
             channel.local_readers.add(reader)
             channel.set_reader_keeptime(reader_name, 0)
-            self._obj._local_readers[reader_name] = reader
+            self._obj._readers_by_id[reader_name] = reader
         else:
             # we don't know the rank at this point, so save for later
             self._channel_reader_names.setdefault(channel_name, [])
@@ -47,13 +47,13 @@ class STMBuilder:
     def create_writer(self, channel_name: str, writer_name: str):
         channel_is_local = (
             channel_name in self._obj._local_channels
-            and channel_name in self._obj._channel_ranks
+            and channel_name in self._obj._channel_rank
         )
         if channel_is_local:
             channel = self._obj._local_channels[channel_name]
             channel.set_writer_advancetime(writer_name, 0)
             writer = _Writer(self._obj, writer_name, channel_name, RANK)
-            self._obj._local_writers[writer_name] = writer
+            self._obj._writers_by_id[writer_name] = writer
         else:
             # we don't know the rank at this point, so save for later
             self._channel_writer_names.setdefault(channel_name, [])
@@ -69,7 +69,7 @@ class STMBuilder:
         logger.debug(f"({RANK}) ready msgs = {rank_ready_messages}")
         for msg in rank_ready_messages:
             for channel_name in msg.channels:
-                self._obj._channel_ranks[channel_name] = msg.source_rank
+                self._obj._channel_rank[channel_name] = msg.source_rank
 
     def _distribute_readers_metadata(self):
         # initialize readers that are attached to remote channels
@@ -81,11 +81,11 @@ class STMBuilder:
         #   after alltoall, each channels will know the rank where each reader is located
         reader_rank_attachments: list[list[tuple[str, str]]] = [[] for _ in range(SIZE)]
         for channel_name, reader_names in self._channel_reader_names.items():
-            channel_rank = self._obj._channel_ranks[channel_name]
+            channel_rank = self._obj._channel_rank[channel_name]
             # create reader objects
             for reader_name in reader_names:
                 reader = _Reader(reader_name, channel_name, channel_rank)
-                self._obj._local_readers[reader_name] = reader
+                self._obj._readers_by_id[reader_name] = reader
                 self._obj._channel_readers.setdefault(channel_name, [])
                 self._obj._channel_readers[channel_name].append(reader)
                 # note the ranks that this reader has attachments to
@@ -106,10 +106,10 @@ class STMBuilder:
         # each channel needs to know the advance time for each of its writers
         writer_rank_attachments: list[list[tuple[str, str]]] = [[] for _ in range(SIZE)]
         for channel_name, writer_names in self._channel_writer_names.items():
-            channel_rank = self._obj._channel_ranks[channel_name]
+            channel_rank = self._obj._channel_rank[channel_name]
             for writer_name in writer_names:
                 writer = _Writer(self._obj, writer_name, channel_name, channel_rank)
-                self._obj._local_writers[writer_name] = writer
+                self._obj._writers_by_id[writer_name] = writer
                 writer_rank_attachments[channel_rank].append(
                     (channel_name, writer_name)
                 )

@@ -24,12 +24,12 @@ SIZE = COMM.Get_size()
 
 class _STM:
     def __init__(self):
-        self._channel_ranks: dict[str, int] = {}
+        self._channel_rank: dict[str, int] = {}
         self._local_channels: dict[str, _Channel] = {}
         self._channel_readers: dict[str, list[_Reader]] = {}
         self._rank_shutdown = [False] * SIZE
-        self._local_readers: dict[str, _Reader] = {}
-        self._local_writers: dict[str, _Writer] = {}
+        self._readers_by_id: dict[str, _Reader] = {}
+        self._writers_by_id: dict[str, _Writer] = {}
 
     def __enter__(self):
         self.start()
@@ -39,10 +39,10 @@ class _STM:
         self.stop()
 
     def get_reader(self, name: str):
-        return self._local_readers[name]
+        return self._readers_by_id[name]
 
     def get_writer(self, name: str):
-        return self._local_writers[name]
+        return self._writers_by_id[name]
 
     def start(self, listening_mode: Literal["thread", "manual"] = "thread"):
         if listening_mode == "thread":
@@ -68,7 +68,7 @@ class _STM:
                 break
             handler(msg)
 
-    def receive_message(self):
+    def receive_message(self) -> MPI.Request:
         return COMM.irecv(tag=STM_Tag.STM_DATA)
 
     def check_shutdown(self, msg: Any):
@@ -105,10 +105,10 @@ class _STM:
             channel = self._local_channels[channel_name]
             channel.publish_data(ts, item)
         else:
-            if channel_name not in self._channel_ranks:
+            if channel_name not in self._channel_rank:
                 raise ValueError(f"Unknown channel {channel_name}")
             msg = _Message_Channel_Put(ts, item, RANK, channel_name)
-            channel_rank = self._channel_ranks[channel_name]
+            channel_rank = self._channel_rank[channel_name]
             COMM.send(obj=msg, dest=channel_rank, tag=STM_Tag.STM_DATA)
 
 
