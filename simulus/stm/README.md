@@ -67,8 +67,6 @@ with stm:
     print(reader.get(1)) # prints: "DATA STRING"
 ```
 
-## Advanced Usage
-
 ## STMBuilder Methods
 
 ### `.create_channels`
@@ -216,7 +214,9 @@ Retrieves data for a specific timestamp.
 - **Returns**:
   - `tuple[Any, bool]` - A tuple containing the data (or `None`) and a boolean indicating whether the data could potentially be present in a future call. If the boolean is `False`, then a future call of `get` at the same timestamp will never return anything different. Internally, this means the channel's "advance_time" has reached `ts`.
 
-### `consume_until(time: int)`
+### `.consume_until`
+
+`consume_until(time: int)`
 
 Consumes data up to, and including, a specified timestamp.
 
