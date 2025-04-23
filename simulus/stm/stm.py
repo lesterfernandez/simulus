@@ -105,6 +105,7 @@ class _STM:
             channel = self._local_channels[channel_name]
             channel.publish_data(ts, item)
         else:
+            # todo: this can be removed once we have proper checks in the .build phase
             if channel_name not in self._channel_rank:
                 raise ValueError(f"Unknown channel {channel_name}")
             msg = _Message_Channel_Put(ts, item, RANK, channel_name)

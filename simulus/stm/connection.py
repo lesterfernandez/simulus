@@ -51,8 +51,10 @@ class _Writer:
         self.advancetime = 0
 
     def put(self, ts: int, item: Any):
+        # todo: optimize using advancetime
         msg = _Message_Channel_Put(ts, item, self.channel_rank, self.channel_name)
         COMM.isend(obj=msg, dest=self.channel_rank, tag=STM_Tag.STM_DATA)
+        # todo: manage pending requests, look into this
 
     def advance_until(self, ts: int):
         if ts > self.advancetime:

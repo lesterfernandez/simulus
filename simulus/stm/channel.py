@@ -27,6 +27,7 @@ class _Channel:
         self._readers_keeptime = _PQDict_()
         self._writers_advancetime = _PQDict_()
 
+    # todo: maybe writers can do this instead?
     def publish_data(self, ts: int, item: Any):
         self.channel_data[ts] = item
         for reader in self.local_readers:
@@ -38,6 +39,7 @@ class _Channel:
             reqs.append(req)
         logger.debug(f"({RANK}) publishing item={item} ts={ts} to {len(reqs)} ranks")
         MPI.Request.waitall(reqs)
+        # todo: should this be waiting?
 
     def keeptime(self) -> int:
         _, ts = self._readers_keeptime.peek()

@@ -11,8 +11,6 @@ from .messaging import (
 COMM = MPI.COMM_WORLD
 RANK = COMM.Get_rank()
 SIZE = COMM.Get_size()
-RANK = COMM.Get_rank()
-SIZE = COMM.Get_size()
 
 
 class STMBuilder:
@@ -22,6 +20,7 @@ class STMBuilder:
         self._channel_writer_names: dict[str, list[str]] = {}
 
     def create_channels(self, channels: list[str]):
+        # todo: check duplicates
         for channel in channels:
             self._obj._local_channels[channel] = _Channel(channel)
             self._obj._channel_rank[channel] = RANK
@@ -126,6 +125,8 @@ class STMBuilder:
             raise Exception("Builder cannot be reused")
 
         self._distribute_channel_ranks()
+
+        # todo: check for bad channel names in connections
         self._distribute_readers_metadata()
         self._distribute_writers_metadata()
 
