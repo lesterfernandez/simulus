@@ -23,9 +23,11 @@ class _Reader:
         self.channel_advancetime = 0
 
     def get(self, ts: int):
-        if ts <= self.keeptime or ts < self.channel_advancetime:
+        if ts <= self.keeptime:
             return None, False
         item = self.data[ts]
+        if ts < self.channel_advancetime:
+            return item, False
         return item, True
         # if not item and not wait:
         # return item
