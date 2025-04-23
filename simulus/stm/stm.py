@@ -3,7 +3,7 @@ import threading
 from mpi4py import MPI
 from typing import Any, Literal
 
-from .reader import _Reader
+from .connection import _Reader, _Writer
 from .channel import _Channel
 
 from .log import logger
@@ -26,10 +26,10 @@ class _STM:
     def __init__(self):
         self._channel_rank: dict[str, int] = {}
         self._local_channels: dict[str, _Channel] = {}
-        self._channel_readers: dict[str, list[_Reader]] = {}
-        self._rank_shutdown = [False] * SIZE
+        self._readers_by_channel: dict[str, list[_Reader]] = {}
         self._readers_by_id: dict[str, _Reader] = {}
         self._writers_by_id: dict[str, _Writer] = {}
+        self._rank_shutdown = [False] * SIZE
 
     def __enter__(self):
         self.start()
@@ -87,7 +87,7 @@ class _STM:
         if isinstance(msg, _Message_Channel_Put):
             self._put(msg.ts, msg.item, msg.channel_name)
         elif isinstance(msg, _Message_Reader_Data):
-            for reader in self._channel_readers.get(msg.channel_name, []):
+            for reader in self._readers_by_channel.get(msg.channel_name, []):
                 reader.data[msg.ts] = msg.item
         elif isinstance(msg, _Message_Reader_Consume):
             channel = self._local_channels[msg.channel_name]
@@ -97,7 +97,7 @@ class _STM:
                 channel = self._local_channels[msg.channel_name]
                 channel.handle_advance_until(msg.writer_name, msg.until)
                 return
-            for reader in self._channel_readers[msg.channel_name]:
+            for reader in self._readers_by_channel[msg.channel_name]:
                 reader.channel_advancetime = max(reader.channel_advancetime, msg.until)
 
     def _put(self, ts: int, item: Any, channel_name: str):
@@ -110,21 +110,3 @@ class _STM:
             msg = _Message_Channel_Put(ts, item, RANK, channel_name)
             channel_rank = self._channel_rank[channel_name]
             COMM.send(obj=msg, dest=channel_rank, tag=STM_Tag.STM_DATA)
-
-
-class _Writer:
-    def __init__(self, stm: _STM, name: str, channel_name: str, channel_rank: int):
-        self.stm = stm
-        self.name = name
-        self.channel_name = channel_name
-        self.channel_rank = channel_rank
-        self.advancetime = 0
-
-    def put(self, ts: int, item: Any):
-        self.stm._put(ts, item, self.channel_name)
-
-    def advance_until(self, ts: int):
-        if ts > self.advancetime:
-            self.advancetime = ts
-            msg = _Message_Writer_Advance(ts, self.name, self.channel_name)
-            COMM.isend(obj=msg, dest=self.channel_rank, tag=STM_Tag.STM_DATA)

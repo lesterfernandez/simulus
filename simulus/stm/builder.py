@@ -52,7 +52,7 @@ class STMBuilder:
         if channel_is_local:
             channel = self._obj._local_channels[channel_name]
             channel.set_writer_advancetime(writer_name, 0)
-            writer = _Writer(self._obj, writer_name, channel_name, RANK)
+            writer = _Writer(writer_name, channel_name, RANK)
             self._obj._writers_by_id[writer_name] = writer
         else:
             # we don't know the rank at this point, so save for later
@@ -86,8 +86,8 @@ class STMBuilder:
             for reader_name in reader_names:
                 reader = _Reader(reader_name, channel_name, channel_rank)
                 self._obj._readers_by_id[reader_name] = reader
-                self._obj._channel_readers.setdefault(channel_name, [])
-                self._obj._channel_readers[channel_name].append(reader)
+                self._obj._readers_by_channel.setdefault(channel_name, [])
+                self._obj._readers_by_channel[channel_name].append(reader)
                 # note the ranks that this reader has attachments to
                 reader_rank_attachments[channel_rank].append(
                     (channel_name, reader_name)
@@ -108,7 +108,7 @@ class STMBuilder:
         for channel_name, writer_names in self._channel_writer_names.items():
             channel_rank = self._obj._channel_rank[channel_name]
             for writer_name in writer_names:
-                writer = _Writer(self._obj, writer_name, channel_name, channel_rank)
+                writer = _Writer(writer_name, channel_name, channel_rank)
                 self._obj._writers_by_id[writer_name] = writer
                 writer_rank_attachments[channel_rank].append(
                     (channel_name, writer_name)

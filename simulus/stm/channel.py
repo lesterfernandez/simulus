@@ -2,7 +2,7 @@ from mpi4py import MPI
 from typing import Any
 
 from .log import logger
-from .reader import _Reader
+from .connection import _Reader
 from .data import _Timed_Data
 from .messaging import (
     _Message_Reader_Data,

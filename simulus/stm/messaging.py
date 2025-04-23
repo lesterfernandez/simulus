@@ -1,8 +1,6 @@
 from dataclasses import dataclass
 from typing import Any
 
-from .data import _Timed_Data
-
 
 class STM_Tag:
     STM_DATA = 1
@@ -46,9 +44,3 @@ class _Message_Writer_Advance:
     until: int
     writer_name: str
     channel_name: str
-
-
-# @dataclass
-# class _Message_Reader_Advance_Notification:
-#     until: int
-#     channel_name: str

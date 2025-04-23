@@ -1,7 +1,14 @@
 from mpi4py import MPI
+from typing import Any
 
-from .messaging import _Message_Reader_Consume, STM_Tag
+from .messaging import (
+    _Message_Reader_Consume,
+    _Message_Channel_Put,
+    _Message_Writer_Advance,
+    STM_Tag,
+)
 from .data import _Timed_Data
+
 
 COMM = MPI.COMM_WORLD
 
@@ -31,4 +38,22 @@ class _Reader:
                 del self.data[ts]
             self.keeptime = time
             msg = _Message_Reader_Consume(time, self.name, self.channel_name)
+            COMM.isend(obj=msg, dest=self.channel_rank, tag=STM_Tag.STM_DATA)
+
+
+class _Writer:
+    def __init__(self, name: str, channel_name: str, channel_rank: int):
+        self.name = name
+        self.channel_name = channel_name
+        self.channel_rank = channel_rank
+        self.advancetime = 0
+
+    def put(self, ts: int, item: Any):
+        msg = _Message_Channel_Put(ts, item, self.channel_rank, self.channel_name)
+        COMM.isend(obj=msg, dest=self.channel_rank, tag=STM_Tag.STM_DATA)
+
+    def advance_until(self, ts: int):
+        if ts > self.advancetime:
+            self.advancetime = ts
+            msg = _Message_Writer_Advance(ts, self.name, self.channel_name)
             COMM.isend(obj=msg, dest=self.channel_rank, tag=STM_Tag.STM_DATA)
